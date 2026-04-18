@@ -1,9 +1,11 @@
 [build]
   command = "npm run build"
   publish = ".next"
+  node_bundler = "esbuild"
 
 [context.production.environment]
   NODE_ENV = "production"
+  NODE_VERSION = "20"
   # Database URL for Prisma (set in Netlify environment variables)
   DATABASE_URL = "postgresql://neondb_owner:npg_z6EyMwbmkfB8@ep-wandering-feather-almsegd3.c-3.eu-central-1.aws.neon.tech/neondb?sslmode=require"
 
