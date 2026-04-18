@@ -1,0 +1,243 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Admin User (single account) ─────────────────────────────────────
+model AdminUser {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── FAQ ────────────────────────────────────────────────────────────
+model FaqCategory {
+  id      String   @id @default(cuid())
+  orderBy Int      @default(0)
+  items   FaqItem[]
+
+  // Translations (5 languages: fr, nl, de, en, ar)
+  nameFr  String
+  nameNl  String
+  nameDe  String
+  nameEn  String
+  nameAr  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FaqItem {
+  id         String      @id @default(cuid())
+  categoryId String
+  category   FaqCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderBy    Int         @default(0)
+
+  // Questions (5 languages)
+  questionFr String
+  questionNl String
+  questionDe String
+  questionEn String
+  questionAr String
+
+  // Answers (HTML content for each language)
+  answerFr   String @db.Text
+  answerNl   String @db.Text
+  answerDe   String @db.Text
+  answerEn   String @db.Text
+  answerAr   String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── News ───────────────────────────────────────────────────────────
+model NewsItem {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  orderBy   Int      @default(0)
+
+  // Titles (5 languages)
+  titleFr   String
+  titleNl   String
+  titleDe   String
+  titleEn   String
+  titleAr   String
+
+  // Bodies (HTML content for each language)
+  bodyFr    String @db.Text
+  bodyNl    String @db.Text
+  bodyDe    String @db.Text
+  bodyEn    String @db.Text
+  bodyAr    String @db.Text
+
+  // Metadata
+  tags      String   @default("") // comma-separated tags
+  featuredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Reform 2025: Changes ──────────────────────────────────────────
+model ReformChange {
+  id      String @id @default(cuid())
+  orderBy Int    @default(0)
+
+  // Before/After changes (5 languages each)
+  beforeFr  String @db.Text
+  beforeNl  String @db.Text
+  beforeDe  String @db.Text
+  beforeEn  String @db.Text
+  beforeAr  String @db.Text
+
+  afterFr   String @db.Text
+  afterNl   String @db.Text
+  afterDe   String @db.Text
+  afterEn   String @db.Text
+  afterAr   String @db.Text
+
+  // Impact tag (category of change)
+  impactTag String @default("modified") // e.g., "modified", "new", "removed"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Reform 2025: User Profiles ────────────────────────────────────
+model ReformProfile {
+  id      String @id @default(cuid())
+  orderBy Int    @default(0)
+
+  // Profile names (5 languages)
+  nameFr  String
+  nameNl  String
+  nameDe  String
+  nameEn  String
+  nameAr  String
+
+  // Descriptions (HTML for each language)
+  descFr  String @db.Text
+  descNl  String @db.Text
+  descDe  String @db.Text
+  descEn  String @db.Text
+  descAr  String @db.Text
+
+  // Impact summary (5 languages)
+  impactFr String @db.Text
+  impactNl String @db.Text
+  impactDe String @db.Text
+  impactEn String @db.Text
+  impactAr String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Reform 2025: Timeline ─────────────────────────────────────────
+model ReformTimeline {
+  id      String @id @default(cuid())
+  orderBy Int    @default(0)
+
+  // Event date
+  eventDate DateTime
+
+  // Descriptions (5 languages)
+  descFr  String @db.Text
+  descNl  String @db.Text
+  descDe  String @db.Text
+  descEn  String @db.Text
+  descAr  String @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Tools & Calculators ───────────────────────────────────────────
+model ToolItem {
+  id      String @id @default(cuid())
+  slug    String @unique
+  orderBy Int    @default(0)
+
+  // Titles (5 languages)
+  titleFr  String
+  titleNl  String
+  titleDe  String
+  titleEn  String
+  titleAr  String
+
+  // Descriptions (5 languages)
+  descFr   String @db.Text
+  descNl   String @db.Text
+  descDe   String @db.Text
+  descEn   String @db.Text
+  descAr   String @db.Text
+
+  // Link & CTA
+  link     String
+  ctaFr    String @default("Utiliser")
+  ctaNl    String @default("Gebruiken")
+  ctaDe    String @default("Nutzen")
+  ctaEn    String @default("Use")
+  ctaAr    String @default("استخدم")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Glossary (Legal Terms) ────────────────────────────────────────
+model GlossaryEntry {
+  id        String @id @default(cuid())
+  term      String @unique // Should not be translated (Belgian legal terms)
+  orderBy   Int    @default(0)
+
+  // Short definitions (5 languages)
+  shortFr   String
+  shortNl   String
+  shortDe   String
+  shortEn   String
+  shortAr   String
+
+  // Long definitions (5 languages)
+  longFr    String @db.Text
+  longNl    String @db.Text
+  longDe    String @db.Text
+  longEn    String @db.Text
+  longAr    String @db.Text
+
+  // Category (e.g., "ONEM", "administrative", etc.)
+  category  String @default("general")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── UI Strings (Translations) ──────────────────────────────────────
+model UiString {
+  id   String @id @default(cuid())
+  key  String @unique // e.g., "home.hero.title", "nav.home"
+
+  // Translations (5 languages)
+  valueFr String
+  valueNl String
+  valueDe String
+  valueEn String
+  valueAr String
+
+  // Metadata
+  category String @default("general") // e.g., "home", "nav", "error", "admin"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
