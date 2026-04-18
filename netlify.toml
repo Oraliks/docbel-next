@@ -1,6 +1,5 @@
 [build]
   command = "npm run build"
-  publish = ".next/standalone"
 
 [context.production.environment]
   NODE_ENV = "production"
