@@ -1,10 +1,12 @@
-# Netlify configuration for Next.js
 [build]
   command = "npm run build"
-  functions = "netlify/functions"
+  publish = ".next/standalone"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[functions]
+  directory = "netlify/functions"
 
 [dev]
   command = "npm run dev"
