@@ -1,53 +1,34 @@
-/**
- * Seed script to create the first admin user
- * Run with: npx ts-node scripts/seed-admin.ts
- */
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../lib/generated/prisma/client'
+import { hash } from 'bcryptjs'
 
-import { prisma } from '../lib/prisma'
-import { hashPassword } from '../lib/auth'
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+  ssl: { rejectUnauthorized: false },
+})
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  console.log('🌱 Seeding database with admin user...')
+  const email = 'admin'
+  const password = 'admin'
+  const passwordHash = await hash(password, 12)
 
-  // Check if admin already exists
-  const existingAdmin = await prisma.adminUser.findFirst()
-  if (existingAdmin) {
-    console.log('⚠️  Admin user already exists:')
-    console.log(`   Email: ${existingAdmin.email}`)
-    console.log(`   ID: ${existingAdmin.id}`)
-    return
-  }
-
-  // For demo: use a default password
-  // In production, use a strong random password or prompt the user
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@docbel.local'
-  const adminPassword = process.env.ADMIN_PASSWORD || 'changeme123'
-
-  const hashedPassword = await hashPassword(adminPassword)
-
-  const admin = await prisma.adminUser.create({
-    data: {
-      email: adminEmail,
-      passwordHash: hashedPassword,
-    },
+  // Upsert dans User (NextAuth credentials)
+  await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, role: 'ADMIN', name: 'Admin' },
+    create: { email, passwordHash, role: 'ADMIN', name: 'Admin' },
   })
 
-  console.log('✅ Admin user created successfully!')
-  console.log()
-  console.log('Admin Credentials:')
-  console.log(`  Email: ${admin.email}`)
-  console.log(`  Password: ${adminPassword}`)
-  console.log()
-  console.log('⚠️  IMPORTANT: Change the password in /admin/login after first login')
-  console.log()
-  console.log(`Login at: http://localhost:3000/admin/login`)
+  // Upsert dans AdminUser (legacy check-auth)
+  await prisma.adminUser.upsert({
+    where: { email },
+    update: { passwordHash },
+    create: { email, passwordHash },
+  })
+
+  console.log('✅ Compte créé — login: admin / admin')
+  await prisma.$disconnect()
 }
 
-main()
-  .catch((e) => {
-    console.error('Error seeding database:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await prisma.$disconnect()
-  })
+main().catch(e => { console.error(e); process.exit(1) })
