@@ -37,6 +37,7 @@ function ToolbarBtn({ onClick, active, title, children }: {
 
 export default function RichEditor({ value, onChange, placeholder }: RichEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false, // Fix SSR hydration mismatch
     extensions: [
       StarterKit,
       Heading.configure({ levels: [1, 2, 3] }),
