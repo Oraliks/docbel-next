@@ -20,20 +20,19 @@ const LABELS: Record<string, string> = {
 
 function AdminBreadcrumb() {
   const pathname = usePathname()
-  // segments after 'admin'
   const segments = pathname.split('/').filter(Boolean).slice(1)
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        <BreadcrumbItem>
+        <BreadcrumbItem className="hidden md:block">
           <BreadcrumbLink asChild>
             <Link href="/admin">Admin</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         {segments.map((seg, i) => (
           <span key={seg} style={{ display: 'contents' }}>
-            <BreadcrumbSeparator />
+            <BreadcrumbSeparator className="hidden md:block" />
             <BreadcrumbItem>
               {i === segments.length - 1 ? (
                 <BreadcrumbPage>{LABELS[seg] ?? seg}</BreadcrumbPage>
@@ -54,18 +53,18 @@ function AdminBreadcrumb() {
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider className="dark">
       <AppSidebar />
       <SidebarInset>
         {/* Topbar */}
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 sticky top-0 z-50 bg-background">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <AdminBreadcrumb />
         </header>
 
         {/* Page content */}
-        <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex flex-1 flex-col p-6 min-h-0">
           {children}
         </div>
       </SidebarInset>
