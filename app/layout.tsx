@@ -3,9 +3,6 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import ThemeProvider from '@/components/ThemeProvider'
 import LanguageProvider from '@/components/LanguageProvider'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
-import NotifBar from '@/components/NotifBar'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -19,9 +16,7 @@ export const metadata: Metadata = {
   description:
     "Plateforme belge d'information sur la réglementation chômage. Gratuit, accessible, à jour avec la réforme 2025.",
   keywords: ['chômage', 'belgique', 'ONEM', 'allocations', 'C4', 'droits', 'réforme 2025'],
-  icons: {
-    icon: '/favicon.svg',
-  },
+  icons: { icon: '/favicon.svg' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -30,10 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <ThemeProvider>
           <LanguageProvider>
-            <NotifBar />
-            <Navbar />
-            <main>{children}</main>
-            <Footer />
+            {children}
           </LanguageProvider>
         </ThemeProvider>
       </body>
