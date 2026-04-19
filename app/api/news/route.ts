@@ -1,23 +1,49 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, parseBody, errorResponse, successResponse } from '@/lib/api-utils'
+import { NEWS_ITEMS } from '@/lib/content'
+
+function staticFallback() {
+  const langs = ['fr', 'nl', 'de', 'en', 'ar'] as const
+  const base = NEWS_ITEMS.fr
+  return base.map((item, i) => ({
+    id: `static-${i}`,
+    slug: `article-${i + 1}`,
+    tags: item.tag,
+    featuredAt: item.featured ? item.date : null,
+    createdAt: item.date,
+    titleFr: NEWS_ITEMS.fr[i]?.title ?? item.title,
+    titleNl: NEWS_ITEMS.nl[i]?.title ?? item.title,
+    titleDe: NEWS_ITEMS.de[i]?.title ?? item.title,
+    titleEn: NEWS_ITEMS.en[i]?.title ?? item.title,
+    titleAr: NEWS_ITEMS.ar[i]?.title ?? item.title,
+    bodyFr: NEWS_ITEMS.fr[i]?.excerpt ?? '',
+    bodyNl: NEWS_ITEMS.nl[i]?.excerpt ?? '',
+    bodyDe: NEWS_ITEMS.de[i]?.excerpt ?? '',
+    bodyEn: NEWS_ITEMS.en[i]?.excerpt ?? '',
+    bodyAr: NEWS_ITEMS.ar[i]?.excerpt ?? '',
+  }))
+}
 
 /**
  * GET /api/news - List all news articles (PUBLIC)
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
+    if (!prisma) {
+      const data = staticFallback()
+      return NextResponse.json({ success: true, data })
+    }
+
     const news = await prisma.newsItem.findMany({
       orderBy: { createdAt: 'desc' },
     })
 
-    return successResponse({
-      total: news.length,
-      news,
-    })
+    return NextResponse.json({ success: true, data: news })
   } catch (error) {
     console.error('News GET error:', error)
-    return errorResponse('Failed to fetch news articles', 500)
+    const data = staticFallback()
+    return NextResponse.json({ success: true, data })
   }
 }
 
