@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../lib/generated/prisma"
@@ -12,7 +7,81 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── Admin User (single account) ─────────────────────────────────────
+// ─── Enums ───────────────────────────────────────────────────────────
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+  AUTHOR
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SPAM
+}
+
+// ─── Auth (NextAuth) ─────────────────────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          UserRole  @default(AUTHOR)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+  comments      Comment[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Admin User (single account, legacy) ─────────────────────────────
 model AdminUser {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -21,13 +90,169 @@ model AdminUser {
   updatedAt     DateTime @updatedAt
 }
 
+// ─── Posts ───────────────────────────────────────────────────────────
+model Post {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  status      PostStatus @default(DRAFT)
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id])
+  categoryId  String?
+  category    Category?  @relation(fields: [categoryId], references: [id])
+  featuredImage String?
+  publishedAt DateTime?
+  scheduledAt DateTime?
+
+  titleFr     String
+  titleNl     String
+  titleDe     String
+  titleEn     String
+  titleAr     String
+
+  bodyFr      String     @db.Text
+  bodyNl      String     @db.Text
+  bodyDe      String     @db.Text
+  bodyEn      String     @db.Text
+  bodyAr      String     @db.Text
+
+  excerptFr   String?    @db.Text
+  excerptNl   String?    @db.Text
+  excerptDe   String?    @db.Text
+  excerptEn   String?    @db.Text
+  excerptAr   String?    @db.Text
+
+  metaTitleFr String?
+  metaTitleEn String?
+  metaDescFr  String?
+  metaDescEn  String?
+
+  viewCount   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  tags        PostTag[]
+  versions    PostVersion[]
+  comments    Comment[]
+}
+
+model PostVersion {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  version   Int
+  bodyFr    String   @db.Text
+  bodyNl    String   @db.Text
+  bodyDe    String   @db.Text
+  bodyEn    String   @db.Text
+  bodyAr    String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+// ─── Categories ───────────────────────────────────────────────────────
+model Category {
+  id       String     @id @default(cuid())
+  slug     String     @unique
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+
+  nameFr   String
+  nameNl   String
+  nameDe   String
+  nameEn   String
+  nameAr   String
+
+  orderBy  Int        @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  posts    Post[]
+}
+
+// ─── Tags ─────────────────────────────────────────────────────────────
+model Tag {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  nameFr    String
+  nameNl    String
+  nameDe    String
+  nameEn    String
+  nameAr    String
+  createdAt DateTime  @default(now())
+
+  posts     PostTag[]
+}
+
+model PostTag {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+// ─── Media ────────────────────────────────────────────────────────────
+model Media {
+  id        String   @id @default(cuid())
+  filename  String
+  url       String
+  mimeType  String
+  size      Int
+  width     Int?
+  height    Int?
+  altFr     String?
+  altEn     String?
+  caption   String?
+  folder    String   @default("/")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────
+model Comment {
+  id        String        @id @default(cuid())
+  postId    String
+  post      Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?         @relation(fields: [authorId], references: [id])
+  guestName String?
+  guestEmail String?
+  body      String        @db.Text
+  status    CommentStatus @default(PENDING)
+  parentId  String?
+  parent    Comment?      @relation("CommentTree", fields: [parentId], references: [id])
+  replies   Comment[]     @relation("CommentTree")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  path      String
+  referrer  String?
+  country   String?
+  device    String?
+  createdAt DateTime @default(now())
+}
+
+model AnalyticsStat {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  path      String
+  views     Int      @default(0)
+  uniques   Int      @default(0)
+
+  @@unique([date, path])
+}
+
 // ─── FAQ ────────────────────────────────────────────────────────────
 model FaqCategory {
   id      String   @id @default(cuid())
   orderBy Int      @default(0)
   items   FaqItem[]
 
-  // Translations (5 languages: fr, nl, de, en, ar)
   nameFr  String
   nameNl  String
   nameDe  String
@@ -44,14 +269,12 @@ model FaqItem {
   category   FaqCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   orderBy    Int         @default(0)
 
-  // Questions (5 languages)
   questionFr String
   questionNl String
   questionDe String
   questionEn String
   questionAr String
 
-  // Answers (HTML content for each language)
   answerFr   String @db.Text
   answerNl   String @db.Text
   answerDe   String @db.Text
@@ -68,34 +291,30 @@ model NewsItem {
   slug      String   @unique
   orderBy   Int      @default(0)
 
-  // Titles (5 languages)
   titleFr   String
   titleNl   String
   titleDe   String
   titleEn   String
   titleAr   String
 
-  // Bodies (HTML content for each language)
   bodyFr    String @db.Text
   bodyNl    String @db.Text
   bodyDe    String @db.Text
   bodyEn    String @db.Text
   bodyAr    String @db.Text
 
-  // Metadata
-  tags      String   @default("") // comma-separated tags
+  tags      String   @default("")
   featuredAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// ─── Reform 2025: Changes ──────────────────────────────────────────
+// ─── Reform 2025 ──────────────────────────────────────────────────
 model ReformChange {
   id      String @id @default(cuid())
   orderBy Int    @default(0)
 
-  // Before/After changes (5 languages each)
   beforeFr  String @db.Text
   beforeNl  String @db.Text
   beforeDe  String @db.Text
@@ -108,33 +327,28 @@ model ReformChange {
   afterEn   String @db.Text
   afterAr   String @db.Text
 
-  // Impact tag (category of change)
-  impactTag String @default("modified") // e.g., "modified", "new", "removed"
+  impactTag String @default("modified")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// ─── Reform 2025: User Profiles ────────────────────────────────────
 model ReformProfile {
   id      String @id @default(cuid())
   orderBy Int    @default(0)
 
-  // Profile names (5 languages)
   nameFr  String
   nameNl  String
   nameDe  String
   nameEn  String
   nameAr  String
 
-  // Descriptions (HTML for each language)
   descFr  String @db.Text
   descNl  String @db.Text
   descDe  String @db.Text
   descEn  String @db.Text
   descAr  String @db.Text
 
-  // Impact summary (5 languages)
   impactFr String @db.Text
   impactNl String @db.Text
   impactDe String @db.Text
@@ -145,15 +359,12 @@ model ReformProfile {
   updatedAt DateTime @updatedAt
 }
 
-// ─── Reform 2025: Timeline ─────────────────────────────────────────
 model ReformTimeline {
   id      String @id @default(cuid())
   orderBy Int    @default(0)
 
-  // Event date
   eventDate DateTime
 
-  // Descriptions (5 languages)
   descFr  String @db.Text
   descNl  String @db.Text
   descDe  String @db.Text
@@ -170,21 +381,18 @@ model ToolItem {
   slug    String @unique
   orderBy Int    @default(0)
 
-  // Titles (5 languages)
   titleFr  String
   titleNl  String
   titleDe  String
   titleEn  String
   titleAr  String
 
-  // Descriptions (5 languages)
   descFr   String @db.Text
   descNl   String @db.Text
   descDe   String @db.Text
   descEn   String @db.Text
   descAr   String @db.Text
 
-  // Link & CTA
   link     String
   ctaFr    String @default("Utiliser")
   ctaNl    String @default("Gebruiken")
@@ -196,47 +404,42 @@ model ToolItem {
   updatedAt DateTime @updatedAt
 }
 
-// ─── Glossary (Legal Terms) ────────────────────────────────────────
+// ─── Glossary ────────────────────────────────────────────────────
 model GlossaryEntry {
   id        String @id @default(cuid())
-  term      String @unique // Should not be translated (Belgian legal terms)
+  term      String @unique
   orderBy   Int    @default(0)
 
-  // Short definitions (5 languages)
   shortFr   String
   shortNl   String
   shortDe   String
   shortEn   String
   shortAr   String
 
-  // Long definitions (5 languages)
   longFr    String @db.Text
   longNl    String @db.Text
   longDe    String @db.Text
   longEn    String @db.Text
   longAr    String @db.Text
 
-  // Category (e.g., "ONEM", "administrative", etc.)
   category  String @default("general")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-// ─── UI Strings (Translations) ──────────────────────────────────────
+// ─── UI Strings ──────────────────────────────────────────────────
 model UiString {
   id   String @id @default(cuid())
-  key  String @unique // e.g., "home.hero.title", "nav.home"
+  key  String @unique
 
-  // Translations (5 languages)
   valueFr String
   valueNl String
   valueDe String
   valueEn String
   valueAr String
 
-  // Metadata
-  category String @default("general") // e.g., "home", "nav", "error", "admin"
+  category String @default("general")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
